@@ -195,8 +195,6 @@ def whatsapp():
                 # Si es entregado (5), programar reseña
                 if estado_actual == 5:
                     pedidos_activos[user]['esperando_reseña'] = True
-                    pedidos_activos[user]['reseña_pedida'] = True
-                    pedidos_activos[user]['hora_reseña'] = datetime.now()
 
                     def enviar_reseña():
                         client.messages.create(
@@ -207,9 +205,12 @@ def whatsapp():
                                 "¿Tienes algún comentario o sugerencia? Tu opinión es muy valiosa para nosotros 🙏"
                             )
                         )
+                        pedidos_activos[user]['reseña_pedida'] = True
+                        pedidos_activos[user]['hora_reseña'] = datetime.now()
                         print(f"📩 Se envió mensaje de reseña a {nombre_cliente}")
 
                     Timer(1800, enviar_reseña).start()
+
 
 
                 break
