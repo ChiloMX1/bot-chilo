@@ -108,54 +108,6 @@ def whatsapp():
     resp     = MessagingResponse()
     msg      = resp.message()
 
-    # ——— Actualizaciones de estado SOLO desde la tienda ———
-    if sender == STORE_NUMBER and incoming in ['1', '2', '3', '4', '5']:
-        if pedidos_activos:
-            numero_cliente, datos = next(iter(pedidos_activos.items()))
-            nombre_cliente = datos['nombre']
-            id_pedido = datos.get('id', 'SINID')
-            estado_actual = int(incoming)
-
-            estados = {
-                1: f"🧾 {nombre_cliente}, tu pedido fue generado. (ID: {id_pedido})",
-                2: f"👨‍🍳 {nombre_cliente}, estamos preparando tus chilaquiles. (ID: {id_pedido})",
-                3: f"🥡 {nombre_cliente}, tu pedido ya está listo. (ID: {id_pedido})",
-                4: f"🚗 {nombre_cliente}, tu pedido ya va en camino. (ID: {id_pedido})",
-                5: f"✅ {nombre_cliente}, tu pedido fue entregado. ¡Gracias por tu compra! (ID: {id_pedido})"
-            }
-
-            # Enviar mensaje al cliente
-            client.messages.create(
-                from_=SANDBOX_NUMBER,
-                to=numero_cliente,
-                body=estados[estado_actual]
-            )
-
-            # Actualizar estado
-            pedidos_activos[numero_cliente]['estado'] = estado_actual
-
-            # Si fue entregado, activar temporizador de reseña
-            if estado_actual == 5:
-                pedidos_activos[numero_cliente]['esperando_reseña'] = True
-                pedidos_activos[numero_cliente]['hora_entrega'] = datetime.now()
-
-                def solicitar_reseña():
-                    client.messages.create(
-                        from_=SANDBOX_NUMBER,
-                        to=numero_cliente,
-                        body=(
-                            f"{nombre_cliente}, ¿qué tal te fue con tus Shelakeles? 🌶️😋\n"
-                            "Cuéntanos tu experiencia aquí mismo para seguir mejorando 🙌"
-                        )
-                    )
-                    pedidos_activos[numero_cliente]['reseña_pedida'] = True
-                    pedidos_activos[numero_cliente]['hora_reseña'] = datetime.now()
-
-                Timer(1800, solicitar_reseña).start()
-
-        return str(resp)
-
-
 
     session = sessions.get(sender, {
         'state': None,
