@@ -119,12 +119,14 @@ def whatsapp():
 
         # Si ya mandó reseña, cerrar pedido
         if reseña_pedida:
+            pedidos_activos[sender]['cerrado'] = True
             pedidos_activos.pop(sender)
 
         # Si pasaron más de 2 hrs desde que se pidió reseña y no ha contestado, cerrar también
         elif esperando_reseña and hora_reseña:
             minutos_pasados = (datetime.now() - hora_reseña).total_seconds() / 60
             if minutos_pasados > 120:
+                pedidos_activos[sender]['cerrado'] = True
                 pedidos_activos.pop(sender)
 
         # Si el ticket no está cerrado aún, y sigue activo
@@ -144,6 +146,7 @@ def whatsapp():
                 "Gracias, *Chilo* 🤖🌶️"
             )
             return str(resp)
+
 
 
 
