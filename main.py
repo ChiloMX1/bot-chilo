@@ -108,6 +108,45 @@ def whatsapp():
     resp     = MessagingResponse()
     msg      = resp.message()
 
+    # Verifica si el cliente tiene un pedido activo
+    if sender in pedidos_activos:
+        datos = pedidos_activos[sender]
+        estado = datos.get('estado', 1)
+        esperando_reseña = datos.get('esperando_reseña', False)
+        reseña_pedida = datos.get('reseña_pedida', False)
+        hora_reseña = datos.get('hora_reseña')
+        cerrado = datos.get('cerrado', False)
+
+        # Si ya mandó reseña, cerrar pedido
+        if reseña_pedida:
+            pedidos_activos.pop(sender)
+
+        # Si pasaron más de 2 hrs desde que se pidió reseña y no ha contestado, cerrar también
+        elif esperando_reseña and hora_reseña:
+            minutos_pasados = (datetime.now() - hora_reseña).total_seconds() / 60
+            if minutos_pasados > 120:
+                pedidos_activos.pop(sender)
+
+        # Si el ticket no está cerrado aún, y sigue activo
+        elif not cerrado:
+            estados_texto = {
+                1: "🧾 Pedido generado",
+                2: "👨‍🍳 En preparación",
+                3: "🥡 Listo para entregar",
+                4: "🚗 En camino",
+                5: "✅ Entregado",
+            }
+            status = estados_texto.get(estado, "Estado desconocido")
+            msg.body(
+                f"📦 El status de tu pedido es: *{status}*.\n"
+                "Si necesitas más información, puedes contactar directamente con la tienda:\n"
+                "👉 https://wa.me/5219993872027\n\n"
+                "Gracias, *Chilo* 🤖🌶️"
+            )
+            return str(resp)
+
+
+
 
     session = sessions.get(sender, {
         'state': None,
@@ -153,6 +192,9 @@ def whatsapp():
                 # Si es entregado (5), programar reseña
                 if estado_actual == 5:
                     pedidos_activos[user]['esperando_reseña'] = True
+                    pedidos_activos[user]['reseña_pedida'] = True
+                    pedidos_activos[user]['hora_reseña'] = datetime.now()
+
                     def enviar_reseña():
                         client.messages.create(
                             from_=SANDBOX_NUMBER,
@@ -163,7 +205,9 @@ def whatsapp():
                             )
                         )
                         print(f"📩 Se envió mensaje de reseña a {nombre_cliente}")
+
                     Timer(1800, enviar_reseña).start()
+
 
                 break
         else:
@@ -408,7 +452,8 @@ def whatsapp():
                     'estado':       1,
                     'hora_entrega': datetime.now(),
                     'esperando_reseña': False,
-                    'reseña_pedida':   False
+                    'reseña_pedida':   False,
+                    'cerrado': False
                 }
 
                 print(f"✅ Pedido guardado en pedidos_activos: {pedidos_activos}")
