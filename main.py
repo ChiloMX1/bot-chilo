@@ -123,6 +123,7 @@ def whatsapp():
         print(f"🟢 Menú de seguimiento activado desde tienda: {incoming}")
 
         # Buscar el primer pedido activo del cliente
+        print("📦 Pedidos activos actuales:", pedidos_activos)
         for user, data in pedidos_activos.items():
             if data['estado'] < 5:
                 nombre_cliente = data['nombre']
@@ -400,7 +401,20 @@ def whatsapp():
                 fecha         = datetime.now().strftime("%d%m%y")
                 id_pedido     = f"{nombre_corto}{ultimos_dig}{fecha}"
 
-                # ——— 2) Calcular total y generar resumen ———
+                # ——— 2) Guardar el pedido en pedidos_activos ———
+                pedidos_activos[sender] = {
+                    'id':           id_pedido,
+                    'nombre':       name,
+                    'estado':       1,
+                    'hora_entrega': datetime.now(),
+                    'esperando_reseña': False,
+                    'reseña_pedida':   False
+                }
+
+                print(f"✅ Pedido guardado en pedidos_activos: {pedidos_activos}")
+
+
+                # ——— 3) Calcular total y generar resumen ———
                 amount = 0
                 lines  = []
                 for i, c in enumerate(session['data']['combos'], start=1):
@@ -412,7 +426,7 @@ def whatsapp():
                     lines.append(f"• Combo {i}: {cn} | Prot: {pn}{' (+$%.2f)'%pp if pp else ''} | Beb: {bv} | Extra: {en}{' (+$%.2f)'%ep if ep else ''}")
                 order_summary = "\n".join(lines)
 
-                # ——— 3) Enviar resumen a la tienda con dirección y formato limpio ———
+                # ——— 4) Enviar resumen a la tienda con dirección y formato limpio ———
                 body_store = (
                     f"🛒 *Nuevo pedido recibido*\n"
                     f"*ID del pedido:* `{id_pedido}`\n"
@@ -437,7 +451,7 @@ def whatsapp():
                     body=body_store
                 )
 
-                # ——— 4) Enviar menú de seguimiento a la tienda ———
+                # ——— 5) Enviar menú de seguimiento a la tienda ———
                 seguimiento_msg = (
                     f"📝 *Seguimiento para pedido {id_pedido}*:\n"
                     "Responde con el número del estado actual:\n\n"
@@ -453,7 +467,7 @@ def whatsapp():
                     body=seguimiento_msg
                 )
 
-                # ——— 5) Confirmación al cliente con nota de envío ———
+                # ——— 6) Confirmación al cliente con nota de envío ———
                 msg.body(
                     f"✅ Pedido completo (ID: {id_pedido})\n\n"
                     f"{order_summary}\n\n"
