@@ -108,48 +108,34 @@ def whatsapp():
     resp     = MessagingResponse()
     msg      = resp.message()
 
-    # ——— PASO B: interceptar si el cliente escribe antes de los 30’ de entrega ———
-    if sender in pedidos_activos \
-       and pedidos_activos[sender].get('esperando_reseña') \
-       and not pedidos_activos[sender].get('reseña_pedida'):
-        minutos = (datetime.now() - pedidos_activos[sender]['hora_entrega']).total_seconds() / 60
-        if minutos < 30:
-            msg.body("🕒 Gracias por escribir. En un momento un humano te atenderá.")
-            client.messages.create(
-                from_=SANDBOX_NUMBER,
-                to=STORE_NUMBER,
-                body=(
-                    f"📩 El cliente {pedidos_activos[sender]['nombre']} envió:\n"
-                    f"“{incoming}”\n"
-                    "Favor de atenderlo manualmente. 🙋"
-                )
-            )
-            return str(resp)
-            
-    # Si el mensaje viene de la tienda y contiene 1–5 para actualizar estado
+    # ——— Actualizaciones de estado SOLO desde la tienda ———
     if sender == STORE_NUMBER and incoming in ['1', '2', '3', '4', '5']:
         if pedidos_activos:
             numero_cliente, datos = next(iter(pedidos_activos.items()))
             nombre_cliente = datos['nombre']
             id_pedido = datos.get('id', 'SINID')
+            estado_actual = int(incoming)
 
             estados = {
-                '1': f"🧾 {nombre_cliente}, tu pedido fue generado. (ID: {id_pedido})",
-                '2': f"👨‍🍳 {nombre_cliente}, estamos preparando tus chilaquiles. (ID: {id_pedido})",
-                '3': f"🥡 {nombre_cliente}, tu pedido ya está listo. (ID: {id_pedido})",
-                '4': f"🚗 {nombre_cliente}, tu pedido ya va en camino. (ID: {id_pedido})",
-                '5': f"✅ {nombre_cliente}, tu pedido fue entregado. ¡Gracias por tu compra! (ID: {id_pedido})"
+                1: f"🧾 {nombre_cliente}, tu pedido fue generado. (ID: {id_pedido})",
+                2: f"👨‍🍳 {nombre_cliente}, estamos preparando tus chilaquiles. (ID: {id_pedido})",
+                3: f"🥡 {nombre_cliente}, tu pedido ya está listo. (ID: {id_pedido})",
+                4: f"🚗 {nombre_cliente}, tu pedido ya va en camino. (ID: {id_pedido})",
+                5: f"✅ {nombre_cliente}, tu pedido fue entregado. ¡Gracias por tu compra! (ID: {id_pedido})"
             }
 
             # Enviar mensaje al cliente
             client.messages.create(
                 from_=SANDBOX_NUMBER,
                 to=numero_cliente,
-                body=estados[incoming]
+                body=estados[estado_actual]
             )
 
+            # Actualizar estado
+            pedidos_activos[numero_cliente]['estado'] = estado_actual
+
             # Si fue entregado, activar temporizador de reseña
-            if incoming == '5':
+            if estado_actual == 5:
                 pedidos_activos[numero_cliente]['esperando_reseña'] = True
                 pedidos_activos[numero_cliente]['hora_entrega'] = datetime.now()
 
@@ -167,8 +153,8 @@ def whatsapp():
 
                 Timer(1800, solicitar_reseña).start()
 
-
         return str(resp)
+
 
 
     session = sessions.get(sender, {
