@@ -14,6 +14,13 @@ seguimiento_activo = {}
 
 app = Flask(__name__)
 
+@app.route("/ping", methods=["GET"])
+def ping():
+    return "Chilo está online 🔥", 200
+
+
+
+
 # Twilio REST client – define estas variables en Replit Secrets
 client = Client(
     os.environ['TWILIO_ACCOUNT_SID'],
