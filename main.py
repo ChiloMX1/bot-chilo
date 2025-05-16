@@ -161,7 +161,7 @@ def whatsapp():
         }
     })
     # Validación del menú de seguimiento (solo responde si es la tienda)
-    if sender == STORE_NUMBER and incoming in ['1', '2', '3', '4', '5']:
+    if sender == STORE_NUMBER and incoming in ['1', '2', '3', '4', '5'] and 'seleccionado' not in seguimiento_activo:
         print(f"🟢 Menú de seguimiento activado desde tienda: {incoming}")
 
         # Revisar si hay pedidos activos
@@ -234,7 +234,7 @@ def whatsapp():
         return ('', 204)
 
     # Si ya eligió un pedido y ahora elige un estado
-    if sender == STORE_NUMBER and incoming in ['1', '2', '3', '4', '5'] and 'seleccionado' not in seguimiento_activo:
+    elif sender == STORE_NUMBER and incoming in ['1', '2', '3', '4', '5'] and 'seleccionado' in seguimiento_activo:
 
         user = seguimiento_activo.pop('seleccionado')
         estado_actual = int(incoming)
