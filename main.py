@@ -164,59 +164,156 @@ def whatsapp():
     if sender == STORE_NUMBER and incoming in ['1', '2', '3', '4', '5']:
         print(f"🟢 Menú de seguimiento activado desde tienda: {incoming}")
 
-        # Buscar el primer pedido activo del cliente
-        print("📦 Pedidos activos actuales:", pedidos_activos)
-        for user, data in pedidos_activos.items():
-            if data['estado'] < 5:
-                nombre_cliente = data['nombre']
-                estado_actual = int(incoming)
-                id_pedido = data['id']
+        # Revisar si hay pedidos activos
+        if not pedidos_activos:
+            client.messages.create(
+                from_=SANDBOX_NUMBER,
+                to=STORE_NUMBER,
+                body="🚫 No hay pedidos activos para actualizar."
+            )
+            return ('', 204)
 
-                estados = {
-                    1: "✅ Tu orden ha sido generada.",
-                    2: "👨‍🍳 Estamos preparando tu pedido.",
-                    3: "🛎️ Tu pedido ya está listo para entregar.",
-                    4: "🛵 Tu pedido ha sido enviado.",
-                    5: f"🥡 {nombre_cliente}, tu pedido ha sido entregado. ¡Gracias por tu preferencia!"
-                }
+        # Convertimos a lista indexada
+        lista_pedidos = [
+            (i + 1, user, datos['nombre'], datos['id'], datos['estado'])
+            for i, (user, datos) in enumerate(pedidos_activos.items())
+            if datos['estado'] < 5
+        ]
 
-                print(f"📤 Enviando estado {estado_actual} a {user} ({nombre_cliente})")
+        if not lista_pedidos:
+            client.messages.create(
+                from_=SANDBOX_NUMBER,
+                to=STORE_NUMBER,
+                body="🚫 Todos los pedidos ya han sido entregados."
+            )
+            return ('', 204)
 
-                # Enviar mensaje al cliente
+        # Guardar la lista en una variable global temporal
+        seguimiento_activo['opciones'] = lista_pedidos
+
+        # Generar menú para mostrar
+        resumen = "📋 *Pedidos activos:*\n"
+        for i, _, nombre, idp, estado in lista_pedidos:
+            resumen += f"{i}️⃣ {nombre} – ID: `{idp}` – Estado: {estado}\n"
+
+        resumen += "\nResponde con el número del pedido que deseas actualizar."
+
+        client.messages.create(
+            from_=SANDBOX_NUMBER,
+            to=STORE_NUMBER,
+            body=resumen
+        )
+        return ('', 204)
+
+    # Si ya está en modo de selección de pedido (elige a cuál actualizar)
+    if sender == STORE_NUMBER and incoming.isdigit() and 'opciones' in seguimiento_activo:
+        opciones = seguimiento_activo['opciones']
+        seleccion = int(incoming)
+
+        if seleccion < 1 or seleccion > len(opciones):
+            client.messages.create(
+                from_=SANDBOX_NUMBER,
+                to=STORE_NUMBER,
+                body="❌ Opción inválida. Elige un número de la lista."
+            )
+            return ('', 204)
+
+        _, numero_cliente, nombre_cliente, id_pedido, _ = opciones[seleccion - 1]
+        seguimiento_activo['seleccionado'] = numero_cliente
+
+        menu = (
+            f"📦 *Actualizar estado para {nombre_cliente} – ID {id_pedido}*\n"
+            "Elige una opción:\n"
+            "1️⃣ Generado\n2️⃣ En preparación\n3️⃣ Listo para entregar\n4️⃣ En camino\n5️⃣ Entregado"
+        )
+        client.messages.create(
+            from_=SANDBOX_NUMBER,
+            to=STORE_NUMBER,
+            body=menu
+        )
+        return ('', 204)
+
+    # Si ya eligió un pedido y ahora elige un estado
+    if sender == STORE_NUMBER and incoming in ['1', '2', '3', '4', '5'] and 'seleccionado' in seguimiento_activo:
+        user = seguimiento_activo.pop('seleccionado')
+        estado_actual = int(incoming)
+
+        if user not in pedidos_activos:
+            client.messages.create(
+                from_=SANDBOX_NUMBER,
+                to=STORE_NUMBER,
+                body="❌ Ese pedido ya no está activo."
+            )
+            return ('', 204)
+
+        nombre_cliente = pedidos_activos[user]['nombre']
+        id_pedido = pedidos_activos[user]['id']
+
+        estados = {
+            1: "✅ Tu orden ha sido generada.",
+            2: "👨‍🍳 Estamos preparando tu pedido.",
+            3: "🛎️ Tu pedido ya está listo para entregar.",
+            4: "🛵 Tu pedido ha sido enviado.",
+            5: f"🥡 {nombre_cliente}, tu pedido ha sido entregado. ¡Gracias por tu preferencia!"
+        }
+
+        print(f"📤 Enviando estado {estado_actual} a {user} ({nombre_cliente})")
+
+        # Enviar mensaje al cliente
+        client.messages.create(
+            from_=SANDBOX_NUMBER,
+            to=user,
+            body=estados[estado_actual]
+        )
+
+        # Actualizar estado
+        pedidos_activos[user]['estado'] = estado_actual
+
+        # Si es entregado (5), programar reseña
+        if estado_actual == 5:
+            pedidos_activos[user]['esperando_reseña'] = True
+
+            def enviar_reseña():
                 client.messages.create(
                     from_=SANDBOX_NUMBER,
                     to=user,
-                    body=estados[estado_actual]
+                    body=(
+                        f"{nombre_cliente}, espero que hayas disfrutado tus chilaquiles 🍽️.\n"
+                        "¿Tienes algún comentario o sugerencia? Tu opinión es muy valiosa para nosotros 🙏"
+                    )
                 )
+                pedidos_activos[user]['reseña_pedida'] = True
+                pedidos_activos[user]['hora_reseña'] = datetime.now()
+                print(f"📩 Se envió mensaje de reseña a {nombre_cliente}")
 
-                # Actualizar estado
-                pedidos_activos[user]['estado'] = estado_actual
+            Timer(1800, enviar_reseña).start()
 
-                # Si es entregado (5), programar reseña
-                if estado_actual == 5:
-                    pedidos_activos[user]['esperando_reseña'] = True
-
-                    def enviar_reseña():
-                        client.messages.create(
-                            from_=SANDBOX_NUMBER,
-                            to=user,
-                            body=(
-                                f"{nombre_cliente}, espero que hayas disfrutado tus chilaquiles 🍽️.\n"
-                                "¿Tienes algún comentario o sugerencia? Tu opinión es muy valiosa para nosotros 🙏"
-                            )
-                        )
-                        pedidos_activos[user]['reseña_pedida'] = True
-                        pedidos_activos[user]['hora_reseña'] = datetime.now()
-                        print(f"📩 Se envió mensaje de reseña a {nombre_cliente}")
-
-                    Timer(1800, enviar_reseña).start()
-
-
-
-                break
+        # Mostrar menú actualizado de pedidos activos
+        nuevos = [
+            (i + 1, u, d['nombre'], d['id'], d['estado'])
+            for i, (u, d) in enumerate(pedidos_activos.items())
+            if d['estado'] < 5
+        ]
+        if nuevos:
+            resumen = "📋 *Pedidos activos actualizados:*\n"
+            for i, _, nombre, idp, estado in nuevos:
+                resumen += f"{i}️⃣ {nombre} – ID: `{idp}` – Estado: {estado}\n"
+            resumen += "\nResponde con el número del pedido que deseas actualizar."
+            seguimiento_activo['opciones'] = nuevos
+            client.messages.create(
+                from_=SANDBOX_NUMBER,
+                to=STORE_NUMBER,
+                body=resumen
+            )
         else:
-            print("⚠️ No se encontró ningún pedido activo para actualizar.")
+            client.messages.create(
+                from_=SANDBOX_NUMBER,
+                to=STORE_NUMBER,
+                body="✅ Todos los pedidos han sido entregados."
+            )
+
         return ('', 204)
+
 
     state = session['state']
 
