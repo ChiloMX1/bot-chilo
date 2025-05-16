@@ -234,7 +234,8 @@ def whatsapp():
         return ('', 204)
 
     # Si ya eligió un pedido y ahora elige un estado
-    if sender == STORE_NUMBER and incoming in ['1', '2', '3', '4', '5'] and 'seleccionado' in seguimiento_activo:
+    if sender == STORE_NUMBER and incoming in ['1', '2', '3', '4', '5'] and 'seleccionado' not in seguimiento_activo:
+
         user = seguimiento_activo.pop('seleccionado')
         estado_actual = int(incoming)
 
