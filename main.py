@@ -82,8 +82,9 @@ def whatsapp():
     data = session['data']
 
     if state == STATE_NAME:
+        msg.body("¡Hola! 👋 Gracias por escribir a *Los Shelakeles*.")
         data['name'] = incoming.title()
-        msg.body(f"¡Hola {data['name']}! ¿Cuál es tu dirección de entrega?")
+        msg.body(f"¿Cuál es tu nombre?")
         session['state'] = STATE_ADDRESS
 
     elif state == STATE_ADDRESS:
