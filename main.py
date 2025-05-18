@@ -11,8 +11,8 @@ client = Client(
 )
 
 # Números de WhatsApp
-CHILO_NUMBER = 'whatsapp:+5215612268107'    # Número de Chilo
-STORE_NUMBER = 'whatsapp:+5215612522186'   # Número de la tienda
+CHILO_NUMBER = 'whatsapp:+5215612268107'
+STORE_NUMBER = 'whatsapp:+5215612522186'
 
 # Almacenes en memoria
 sessions = {}
@@ -27,7 +27,6 @@ STATE_ASK_COMBO_TYPE  = 'ask_combo_type'
 STATE_ASK_PROTEIN     = 'ask_protein'
 STATE_ASK_BEVERAGE    = 'ask_beverage'
 STATE_ASK_EXTRA       = 'ask_extra'
-STATE_PROMOS_OPTIN    = 'promos_optin'
 
 # Emoji para números
 digit_emoji = {str(i): f"{i}\uFE0F\u20E3" for i in range(10)}
@@ -68,9 +67,9 @@ EXTRA_OPTIONS = {
 # App Flask
 app = Flask(__name__)
 
-@app.route("/", methods=["GET"])
+@app.route("/")
 def home():
-    return "✅ Chilo está online y esperando mensajes de WhatsApp.", 200
+    return "✅ Chilo Bot is running!"
 
 @app.route('/whatsapp', methods=['POST'])
 def whatsapp():
@@ -78,13 +77,10 @@ def whatsapp():
     sender = request.values.get('From')
     resp = MessagingResponse()
     msg = resp.message()
-    print(f"📩 Recibido de {sender}: '{incoming}'")
 
-    # Ignorar mensajes de tienda
     if sender == STORE_NUMBER:
         return str(resp)
 
-    # Recuperar o iniciar sesión
     session = sessions.get(sender, {
         'state': None,
         'data': {'name': None, 'address': None, 'combos': [], 'total': 0, 'current': 0}
@@ -155,18 +151,14 @@ def whatsapp():
             return str(resp)
         session['data']['total'] = cnt
         session['data']['current'] = 1
-        menu = '\n'.join(
-            f"{num_emoji(k)} {v[0]} — ${v[1]:.2f}" for k, v in COMBO_OPTIONS.items()
-        )
+        menu = '\n'.join(f"{num_emoji(k)} {v[0]} — ${v[1]:.2f}" for k, v in COMBO_OPTIONS.items())
         msg.body(f'Combo 1, elige uno:\n{menu}')
         session['state'] = STATE_ASK_COMBO_TYPE
 
     elif state == STATE_ASK_COMBO_TYPE:
         if incoming in COMBO_OPTIONS:
             session['data']['combos'].append({'combo': incoming})
-            menu = '\n'.join(
-                f"{num_emoji(k)} {v[0]}" for k, v in PROTEIN_OPTIONS.items()
-            )
+            menu = '\n'.join(f"{num_emoji(k)} {v[0]}" for k, v in PROTEIN_OPTIONS.items())
             msg.body(f'Proteína combo {session["data"]["current"]}:\n{menu}')
             session['state'] = STATE_ASK_PROTEIN
         else:
@@ -175,9 +167,7 @@ def whatsapp():
     elif state == STATE_ASK_PROTEIN:
         if incoming in PROTEIN_OPTIONS:
             session['data']['combos'][-1]['protein'] = incoming
-            menu = '\n'.join(
-                f"{num_emoji(k)} {v}" for k, v in BEVERAGE_OPTIONS.items()
-            )
+            menu = '\n'.join(f"{num_emoji(k)} {v}" for k, v in BEVERAGE_OPTIONS.items())
             msg.body(f'Bebida combo {session["data"]["current"]}:\n{menu}')
             session['state'] = STATE_ASK_BEVERAGE
         else:
@@ -186,9 +176,7 @@ def whatsapp():
     elif state == STATE_ASK_BEVERAGE:
         if incoming in BEVERAGE_OPTIONS:
             session['data']['combos'][-1]['beverage'] = incoming
-            menu = '\n'.join(
-                f"{num_emoji(k)} {v[0]} — ${v[1]:.2f}" for k, v in EXTRA_OPTIONS.items()
-            )
+            menu = '\n'.join(f"{num_emoji(k)} {v[0]} — ${v[1]:.2f}" for k, v in EXTRA_OPTIONS.items())
             msg.body(f'Extra combo {session["data"]["current"]}:\n{menu}')
             session['state'] = STATE_ASK_EXTRA
         else:
@@ -208,9 +196,7 @@ def whatsapp():
             resumen = f"Combo {curr}: {cn}\n• Proteína: {pn}\n• Bebida: {bv}\n• Extra: {en}"
             if curr < tot:
                 d['current'] += 1
-                menu = '\n'.join(
-                    f"{num_emoji(k)} {v[0]} — ${v[1]:.2f}" for k, v in COMBO_OPTIONS.items()
-                )
+                menu = '\n'.join(f"{num_emoji(k)} {v[0]} — ${v[1]:.2f}" for k, v in COMBO_OPTIONS.items())
                 msg.body(f"{resumen}\n👍 ¡Listo! Vamos con el siguiente.\nCombo {d['current']}, elige:\n{menu}")
             else:
                 name = d['name']
