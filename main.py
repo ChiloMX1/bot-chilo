@@ -53,11 +53,11 @@ EXTRA_OPTIONS = {
     '2': ("Huevito estrellado", 18.00),
     '3': ("Guacamole chingon", 45.00),
     '4': ("Dirty Horchata", 45.00),
-    '5':  ("Limonada Natural", 45.00),
-    '6':  ("Jamaica con Limón", 45.00),
-    '7':  ("Coca-Cola", 45.00),
-    '8':  ("Pepsi", 45.00),
-    '9':  ("Manzanita Sol", 45.00),
+    '5': ("Limonada Natural", 45.00),
+    '6': ("Jamaica con Limón", 45.00),
+    '7': ("Coca-Cola", 45.00),
+    '8': ("Pepsi", 45.00),
+    '9': ("Manzanita Sol", 45.00),
     '10': ("Mirinda", 45.00),
     '11': ("Seven Up", 45.00),
     '12': ("Ningun extra", 0.00)
@@ -157,12 +157,15 @@ def whatsapp():
                 f"\n{resumen}\n💰 Total: ${total:.2f}"
             )
 
-            client.messages.create(
-                from_=SANDBOX_NUMBER,
-                to=STORE_NUMBER,
-                body=mensaje_generado
-            )
-            print(f"📤 Chilo notificó a la tienda: {mensaje_generado}")
+            try:
+                client.messages.create(
+                    from_=SANDBOX_NUMBER,
+                    to=STORE_NUMBER,
+                    body=mensaje_generado
+                )
+                print(f"📤 Chilo notificó a la tienda: {mensaje_generado}")
+            except Exception as e:
+                print(f"❌ Error al enviar mensaje a la tienda: {e}")
 
             msg.body("✅ ¡Gracias por tu pedido! Un humano te confirmará pronto el envío.")
             session = None
