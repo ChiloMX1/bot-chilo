@@ -26,7 +26,6 @@ STATE_COMBO_TYPE = 'combo_type'
 STATE_PROTEIN = 'protein'
 STATE_BEVERAGE = 'beverage'
 STATE_EXTRA = 'extra'
-STATE_CONFIRM = 'confirm'
 
 COMBO_OPTIONS = {
     '1': ("El Clásico Shingón", 185.00),
@@ -65,6 +64,8 @@ def ping():
 def whatsapp():
     incoming = request.values.get('Body', '').strip()
     sender = request.values.get('From')
+
+    print(f"📩 Mensaje recibido de {sender}: {incoming}")
 
     resp = MessagingResponse()
     msg = resp.message()
@@ -128,21 +129,6 @@ def whatsapp():
             msg.body(f"Combo {data['current_combo']} – Elige el tipo de combo:\n" + '\n'.join(f"{k}. {v[0]} – ${v[1]:.2f}" for k, v in COMBO_OPTIONS.items()))
             session['state'] = STATE_COMBO_TYPE
         else:
-            session['state'] = STATE_CONFIRM
-            resumen = "🧾 Resumen de tu pedido:\n"
-            total = 0
-            for i, c in enumerate(data['combos'], 1):
-                cn, cp = COMBO_OPTIONS[c['combo']]
-                pn, pp = PROTEIN_OPTIONS[c['protein']]
-                bv = BEVERAGE_OPTIONS[c['beverage']]
-                en, ep = EXTRA_OPTIONS[c['extra']]
-                total += cp + pp + ep
-                resumen += f"• Combo {i}: {cn}, Prot: {pn}, Beb: {bv}, Extra: {en}\n"
-            resumen += f"\nTotal: ${total:.2f}\n¿Confirmas tu pedido? (sí/no)"
-            msg.body(resumen)
-
-    elif state == STATE_CONFIRM:
-        if incoming.lower() in ['sí', 'si']: 
             nombre = data['name']
             direccion = data['address']
             telefono_raw = sender.split(':')[1]
@@ -156,21 +142,22 @@ def whatsapp():
                 total += cp + pp + ep
                 resumen += f"• Combo {i}: {cn}, Prot: {pn}, Beb: {bv}, Extra: {en}\n"
 
+            mensaje_generado = (
+                f"📦 *Nuevo Pedido*\n"
+                f"👤 Cliente: {nombre}\n"
+                f"📍 Dirección: {direccion}\n"
+                f"📱 Contacto: https://wa.me/{telefono_raw}\n"
+                f"\n{resumen}\n💰 Total: ${total:.2f}"
+            )
+
             client.messages.create(
                 from_=SANDBOX_NUMBER,
                 to=STORE_NUMBER,
-                body=(
-                    f"📦 *Nuevo Pedido*\n"
-                    f"👤 Cliente: {nombre}\n"
-                    f"📍 Dirección: {direccion}\n"
-                    f"📱 Contacto: https://wa.me/{telefono_raw}\n"
-                    f"\n{resumen}\n💰 Total: ${total:.2f}"
-                )
+                body=mensaje_generado
             )
+            print(f"📤 Chilo notificó a la tienda: {mensaje_generado}")
+
             msg.body("✅ ¡Gracias por tu pedido! Un humano te confirmará pronto el envío.")
-            session = None
-        else:
-            msg.body("❌ Pedido cancelado. Si deseas reiniciar, escribe *hola*.")
             session = None
 
     if session:
