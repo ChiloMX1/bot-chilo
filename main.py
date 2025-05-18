@@ -78,19 +78,23 @@ def whatsapp():
     resp = MessagingResponse()
     msg = resp.message()
 
+    def reply(text):
+        msg.body(text)
+        print(f"📤 Chilo respondió: {text}")
+
     session = sessions.get(sender, {'state': STATE_NAME, 'data': {}})
     state = session['state']
     data = session['data']
 
     if state == STATE_NAME:
-        msg.body("¡Hola! 👋 soy Chilo 🤖 Gracias por escribir a *Los Shelakeles*.")
-        msg.body("¿Cuál es tu nombre?")
+        reply("¡Hola! 👋 soy *Chilo* 🤖 gracias por escribir a *Los Shelakeles*.")
+        reply("¿Cómo te llamas?")
         session['state'] = STATE_ADDRESS
 
     elif state == STATE_ADDRESS:
         data['name'] = incoming.title()
         menu_link = "https://drive.google.com/file/d/1Mm8i1YtES9su0tl8XX8UqokQSiWeV3vQ/view?usp=sharing"
-        msg.body(
+        reply(
             f"Aquí te dejo el menú chingón: 📎 {menu_link}\n\n"
             "Échale un vistazo y cuando estés listo para ordenar escribe *OK*.\n"
             "Si prefieres ser atendido por un humano escribe *GO*."
@@ -99,13 +103,13 @@ def whatsapp():
 
     elif state == STATE_WAIT_OK:
         if incoming == 'ok':
-            msg.body("¿Cuál es tu dirección para el envío?")
+            reply("¿Cuál es tu dirección para el envío?")
             session['state'] = STATE_COMBO_COUNT
         elif incoming == 'go':
             nombre = data.get('name', 'Cliente')
             telefono_raw = sender.split(':')[1]
             contact_link = f"https://wa.me/{telefono_raw}"
-            msg.body("👌 En breve un humano te atenderá. ¡Gracias por preferir *Los Shelakeles*! 🌶️")
+            reply("👌 En breve un humano te atenderá. ¡Gracias por preferir *Los Shelakeles*! 🌶️")
             try:
                 client.messages.create(
                     from_=SANDBOX_NUMBER,
@@ -118,16 +122,16 @@ def whatsapp():
             sessions.pop(sender, None)
             return str(resp)
         else:
-            msg.body("Por favor escribe *OK* para ordenar o *GO* para ser atendido por un humano.")
+            reply("Por favor escribe *OK* para ordenar o *GO* para ser atendido por un humano.")
 
     elif state == STATE_COMBO_COUNT:
         data['address'] = incoming
-        msg.body("¿Cuántos combos vas a querer hoy?")
+        reply("¿Cuántos combos vas a querer hoy?")
         session['state'] = 'combo_wait'
 
-    elif state == 'combo_wait':
+    elif session['state'] == 'combo_wait':
         if not incoming.isdigit():
-            msg.body("Por favor, indica un número válido de combos.")
+            reply("Por favor, indica un número válido de combos.")
             return str(resp)
 
         combo_count = int(incoming)
@@ -135,7 +139,7 @@ def whatsapp():
             nombre = data.get('name', 'Cliente')
             telefono_raw = sender.split(':')[1]
             contact_link = f"https://wa.me/{telefono_raw}"
-            msg.body("🙌 Como tu pedido es grande (5 combos o más), te vamos a atender personalmente.")
+            reply("🙌 Como tu pedido es grande (5 combos o más), te vamos a atender personalmente.")
             try:
                 client.messages.create(
                     from_=SANDBOX_NUMBER,
@@ -151,42 +155,42 @@ def whatsapp():
         data['combos_total'] = combo_count
         data['current_combo'] = 1
         data['combos'] = []
-        msg.body("Combo 1 – Elige tipo de combo:\n" + '\n'.join(f"{k}. {v[0]} – ${v[1]:.2f}" for k, v in COMBO_OPTIONS.items()))
+        reply("Combo 1 – Elige tipo de combo:\n" + '\n'.join(f"{k}. {v[0]} – ${v[1]:.2f}" for k, v in COMBO_OPTIONS.items()))
         session['state'] = STATE_COMBO_TYPE
 
     elif state == STATE_COMBO_TYPE:
         if incoming not in COMBO_OPTIONS:
-            msg.body("Combo inválido. Elige 1, 2 o 3.")
+            reply("Combo inválido. Elige 1, 2 o 3.")
             return str(resp)
         combo = {'combo': incoming}
         data['combos'].append(combo)
-        msg.body("¿Qué proteína quieres?\n" + '\n'.join(f"{k}. {v[0]}" for k, v in PROTEIN_OPTIONS.items()))
+        reply("¿Qué proteína quieres?\n" + '\n'.join(f"{k}. {v[0]}" for k, v in PROTEIN_OPTIONS.items()))
         session['state'] = STATE_PROTEIN
 
     elif state == STATE_PROTEIN:
         if incoming not in PROTEIN_OPTIONS:
-            msg.body("Opción inválida. Elige una proteína del 1 al 4.")
+            reply("Opción inválida. Elige una proteína del 1 al 4.")
             return str(resp)
         data['combos'][-1]['protein'] = incoming
-        msg.body("¿Qué bebida quieres?\n" + '\n'.join(f"{k}. {v}" for k, v in BEVERAGE_OPTIONS.items()))
+        reply("¿Qué bebida quieres?\n" + '\n'.join(f"{k}. {v}" for k, v in BEVERAGE_OPTIONS.items()))
         session['state'] = STATE_BEVERAGE
 
     elif state == STATE_BEVERAGE:
         if incoming not in BEVERAGE_OPTIONS:
-            msg.body("Opción inválida. Elige una bebida del 1 al 8.")
+            reply("Opción inválida. Elige una bebida del 1 al 8.")
             return str(resp)
         data['combos'][-1]['beverage'] = incoming
-        msg.body("¿Deseas algún extra?\n" + '\n'.join(f"{k}. {v[0]} – ${v[1]:.2f}" for k, v in EXTRA_OPTIONS.items()))
+        reply("¿Deseas algún extra?\n" + '\n'.join(f"{k}. {v[0]} – ${v[1]:.2f}" for k, v in EXTRA_OPTIONS.items()))
         session['state'] = STATE_EXTRA
 
     elif state == STATE_EXTRA:
         if incoming not in EXTRA_OPTIONS:
-            msg.body("Opción inválida. Elige un extra válido.")
+            reply("Opción inválida. Elige un extra válido.")
             return str(resp)
         data['combos'][-1]['extra'] = incoming
         if data['current_combo'] < data['combos_total']:
             data['current_combo'] += 1
-            msg.body(f"Combo {data['current_combo']} – Elige tipo de combo:\n" + '\n'.join(f"{k}. {v[0]} – ${v[1]:.2f}" for k, v in COMBO_OPTIONS.items()))
+            reply(f"Combo {data['current_combo']} – Elige tipo de combo:\n" + '\n'.join(f"{k}. {v[0]} – ${v[1]:.2f}" for k, v in COMBO_OPTIONS.items()))
             session['state'] = STATE_COMBO_TYPE
         else:
             nombre = data['name']
@@ -220,7 +224,7 @@ def whatsapp():
             except Exception as e:
                 print(f"❌ Error al enviar mensaje a la tienda: {e}")
 
-            msg.body("✅ ¡Gracias por tu pedido! Un humano te confirmará pronto el envío.")
+            reply("✅ ¡Gracias por tu pedido! Un humano te confirmará pronto el envío.")
             session = None
 
     if session:
