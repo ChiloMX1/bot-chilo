@@ -75,12 +75,31 @@ def whatsapp():
 
     print(f"📩 Mensaje recibido de {sender}: {incoming}")
 
+    try:
+        client.messages.create(
+            from_=SANDBOX_NUMBER,
+            to=STORE_NUMBER,
+            body=f"📨 {sender.split(':')[1]} escribió a Chilo:\n“{incoming}”"
+        )
+    except Exception as e:
+        print(f"❌ Error al reenviar mensaje recibido: {e}")
+
+
     resp = MessagingResponse()
     msg = resp.message()
 
     def reply(text):
         msg.body(text)
         print(f"📤 Chilo respondió: {text}")
+        try:
+            client.messages.create(
+                from_=SANDBOX_NUMBER,
+                to=STORE_NUMBER,
+                body=f"🤖 Respuesta de Chilo a {sender.split(':')[1]}:\n“{text}”"
+            )
+        except Exception as e:
+            print(f"❌ Error al reenviar respuesta de Chilo: {e}")
+
 
     session = sessions.get(sender, {'state': STATE_NAME, 'data': {}})
     state = session['state']
@@ -164,7 +183,7 @@ def whatsapp():
             return str(resp)
         combo = {'combo': incoming}
         data['combos'].append(combo)
-        reply("¿Qué proteína quieres?\n" + '\n'.join(f"{k}. {v[0]}" for k, v in PROTEIN_OPTIONS.items()))
+        reply("¿Qué proteína quieres?\n" + '\n'.join(f"{k}. {v[0]} – ${v[1]:.2f}" for k, v in PROTEIN_OPTIONS.items()))
         session['state'] = STATE_PROTEIN
 
     elif state == STATE_PROTEIN:
@@ -207,11 +226,12 @@ def whatsapp():
                 resumen += f"• Combo {i}: {cn}, Prot: {pn}, Beb: {bv}, Extra: {en}\n"
 
             mensaje_generado = (
-                f"📦 *Nuevo Pedido*\n"
+                f"📦 *Nuevo Pedido Recibido*\n"
                 f"👤 Cliente: {nombre}\n"
                 f"📍 Dirección: {direccion}\n"
                 f"📱 Contacto: https://wa.me/{telefono_raw}\n"
-                f"\n{resumen}\n💰 Total: ${total:.2f}"
+                f"{resumen}"
+                f"💰 *Total: ${total:.2f}*"
             )
 
             try:
